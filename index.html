@@ -98,7 +98,6 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
         .button-base:hover {
-            /* background: rgba(255, 255, 255, 0.25); */ /* 移除基础悬停颜色变化 */
             transform: translateY(-3px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
@@ -109,23 +108,32 @@
 
         /* 特定按钮颜色 */
         .gemini-button {
-            /* 替换为蓝紫渐变和更强的交互效果 */
             background: linear-gradient(to right, #8965e0 0%, #5e72e4 51%, #8965e0 100%);
             background-size: 200% auto;
             transition: all .5s ease-out;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
         .gemini-button:hover {
-            /* background-position: right center; */ /* 移除渐变滑动效果 */
-            transform: translateY(-4px); /* 悬停时向上浮动 */
+            background-position: right center;
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        /* --- 新增：DeepSeek Test 按钮样式 --- */
+        .deepseek-button {
+            background: linear-gradient(to right, #11cdef 0%, #1171ef 51%, #11cdef 100%);
+            background-size: 200% auto;
+            transition: all .5s ease-out;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .deepseek-button:hover {
+            background-position: right center;
+            transform: translateY(-4px);
             box-shadow: 0 6px 20px rgba(0,0,0,0.3);
         }
         
         .render-button-png { background-color: rgba(80, 150, 220, 0.5); }
-        .render-button-png:hover { /* background-color: rgba(80, 150, 220, 0.7); */ } /* 移除颜色变化 */
-        
         .render-button-screenshot { background-color: rgba(40, 167, 69, 0.5); }
-        .render-button-screenshot:hover { /* background-color: rgba(40, 167, 69, 0.7); */ } /* 移除颜色变化 */
         .render-button-screenshot:disabled {
             background: rgba(150, 150, 150, 0.5);
             cursor: wait;
@@ -241,14 +249,17 @@
 <body>
 
     <div class="card-base">
-        <h1>LaTeX 智能渲染器</h1>
-        <p>请直接输入 LaTeX 代码:</p>
+        <h1>LaTeX渲染器</h1>
+        <p>可以在这里输入你的问题，然后点击按钮Deepseek解释公式获得你的答案！</p>
         
         <textarea id="latexInput" placeholder="例如：\frac{-b \pm \sqrt{b^2-4ac}}{2a}"></textarea>
         
         <div class="button-container">
-            <!-- Gemini Features -->
-            <button id="geminiExplainButton" class="button-base gemini-button">✨ 解释公式</button>
+            <!-- Gemini Button -->
+            <button id="geminiExplainButton" class="button-base gemini-button"> ✨ </button>
+            
+            <!-- DeepSeek Button -->
+            <button id="deepseekTestButton" class="button-base deepseek-button">Deepseek解释公式</button>
 
             <!-- Original Features -->
             <a id="pngLinkButton" href="#" class="button-base render-button-png" target="_blank" rel="noopener noreferrer">打开 PNG</a>
@@ -267,11 +278,11 @@
     <div class="modal" id="explanationModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>✨ AI解释当前输入内容</h2>
+                <h2 id="modalTitle">✨ 公式解释</h2>
                 <button class="close-button" id="closeModalButton">&times;</button>
             </div>
             <div class="modal-body" id="explanationOutput">
-                正在思考中...（预计需要10秒）
+                正在思考中...
             </div>
         </div>
     </div>
@@ -285,91 +296,135 @@
         const previewBox = document.getElementById('previewBox');
         const screenshotButton = document.getElementById('screenshotButton');
         const geminiExplainButton = document.getElementById('geminiExplainButton');
+        const deepseekTestButton = document.getElementById('deepseekTestButton'); // 新增
         const explanationModal = document.getElementById('explanationModal');
         const closeModalButton = document.getElementById('closeModalButton');
         const explanationOutput = document.getElementById('explanationOutput');
+        const modalTitle = document.getElementById('modalTitle'); // 新增
 
         // --- 常量定义 ---
         const staticPrefix = "\\inline&space;\\huge&space;\\dpi{110}\\bg{white}";
         const pngBaseURL = "https://latex.codecogs.com/png.image?";
         const svgBaseURL = "https://latex.codecogs.com/svg.image?";
         
-        // 在Canvas环境中，apiKey留空，平台会自动提供。
-        // 如果您在自己的本地或服务器上运行，请在此处填入您自己的密钥。
-        const apiKey = "AIzaSyA7_m3XrkpXbVyYeO3rLL-j7Kc-nosyzJg"; 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        // --- Gemini API 配置 ---
+        const geminiApiKey = ""; 
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
 
-        // --- Gemini API 调用函数 ---
+        // --- 新增: DeepSeek API 配置 ---
+        // !!! 重要: 请在此处粘贴您的 DeepSeek API 密钥 !!!
+        const deepseekApiKey = "sk-b85b5fba97af4c96a80108954b894c4e"; 
+        const deepseekApiUrl = "https://api.deepseek.com/chat/completions";
+
+        // --- Gemini API 调用函数 (不变) ---
         async function callGemini(systemInstruction, userPrompt) {
             try {
                 const payload = {
                     contents: [{ parts: [{ text: userPrompt }] }],
                     systemInstruction: { parts: [{ text: systemInstruction }] },
                 };
-
-                const response = await fetch(apiUrl, {
+                const response = await fetch(geminiApiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                if (!response.ok) {
-                    throw new Error(`API request failed with status ${response.status}. Please check the console for details.`);
-                }
-
+                if (!response.ok) throw new Error(`API request failed with status ${response.status}.`);
                 const result = await response.json();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                return text || "抱歉，无法获取解释。请检查您的输入或API密钥。";
+                return result.candidates?.[0]?.content?.parts?.[0]?.text || "抱歉，无法获取解释。";
             } catch (error) {
                 console.error("Gemini API call failed:", error);
                 return `出错了: ${error.message}`;
             }
         }
+        
+        // --- 新增: DeepSeek API 调用函数 ---
+        async function callDeepSeek(systemInstruction, userPrompt) {
+            if (deepseekApiKey === "在此处粘贴您的 DeepSeek API 密钥" || !deepseekApiKey) {
+                return "错误：请在 JavaScript 代码中填入您的 DeepSeek API 密钥。";
+            }
+            try {
+                const payload = {
+                    model: "deepseek-chat", // DeepSeek 聊天模型
+                    messages: [
+                        { role: "system", content: systemInstruction },
+                        { role: "user", content: userPrompt }
+                    ]
+                };
+                const response = await fetch(deepseekApiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${deepseekApiKey}` // 使用 Bearer Token 认证
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`API request failed with status ${response.status}. Details: ${JSON.stringify(errorBody)}`);
+                }
+                const result = await response.json();
+                return result.choices?.[0]?.message?.content || "抱歉，无法获取解释。";
+            } catch (error) {
+                console.error("DeepSeek API call failed:", error);
+                return `出错了: ${error.message}`;
+            }
+        }
 
-        // --- 更新预览和链接的函数 ---
+
+        // --- 更新预览和链接的函数 (不变) ---
         function updateOutputs() {
             const userInput = latexInputBox.value.trim();
-            
             if (userInput === "") {
                 previewContainer.style.display = "none";
                 svgPreviewImage.src = "";
                 return;
             }
-
             previewContainer.style.display = "block";
             const encodedInput = encodeURIComponent(userInput);
-            
             pngLinkButton.href = pngBaseURL + staticPrefix + encodedInput;
             svgPreviewImage.src = svgBaseURL + staticPrefix + encodedInput;
         }
 
-        // --- Gemini 功能逻辑 ---
+        // --- Gemini 功能逻辑 (不变) ---
         geminiExplainButton.addEventListener('click', async () => {
             const latexCode = latexInputBox.value.trim();
             if (!latexCode) {
                 alert("输入框中没有公式可以解释。");
                 return;
             }
-
-            explanationOutput.textContent = "正在思考中...";
+            modalTitle.textContent = "✨ Gemini 公式解释";
+            explanationOutput.textContent = "正在调用 Gemini...";
             explanationModal.classList.add('show');
-
             const systemInstruction = "You are a friendly and helpful math and science tutor. Explain the following mathematical formula, which is written in LaTeX, in simple and easy-to-understand Chinese. Explain what the overall formula means and what each variable or symbol represents.";
             const explanation = await callGemini(systemInstruction, latexCode);
-
+            explanationOutput.textContent = explanation;
+        });
+        
+        // --- 新增: DeepSeek 功能逻辑 ---
+        deepseekTestButton.addEventListener('click', async () => {
+            const latexCode = latexInputBox.value.trim();
+            if (!latexCode) {
+                alert("输入框中没有公式可以测试。");
+                return;
+            }
+            modalTitle.textContent = "🧪 DeepSeek 模型测试";
+            explanationOutput.textContent = "正在调用 DeepSeek...";
+            explanationModal.classList.add('show');
+            const systemInstruction = "You are an AI assistant. The user will provide a LaTeX formula. Respond by explaining what the formula is in simple Chinese.";
+            const explanation = await callDeepSeek(systemInstruction, latexCode);
             explanationOutput.textContent = explanation;
         });
 
-        // --- 弹窗控制 ---
+
+        // --- 弹窗控制 (不变) ---
         closeModalButton.addEventListener('click', () => explanationModal.classList.remove('show'));
-        // 点击弹窗外部区域也可以关闭
         explanationModal.addEventListener('click', (event) => {
             if (event.target === explanationModal) {
                 explanationModal.classList.remove('show');
             }
         });
 
-        // --- 屏幕捕捉脚本 ---
+        // --- 屏幕捕捉脚本 (不变) ---
         screenshotButton.addEventListener('click', captureAndDownloadPreview);
 
         async function captureAndDownloadPreview() {
@@ -377,48 +432,37 @@
                 alert("预览区是空的，无法截图。");
                 return;
             }
-
             screenshotButton.disabled = true;
             screenshotButton.textContent = "请授权...";
-
             let stream = null, canvas = document.createElement('canvas'), video = document.createElement('video');
-
             try {
                 stream = await navigator.mediaDevices.getDisplayMedia({
                     video: { mediaSource: "browser" },
                     audio: false,
                     preferCurrentTab: true
                 });
-
                 const track = stream.getVideoTracks()[0];
                 video.srcObject = stream;
-                
                 await new Promise(resolve => video.onloadedmetadata = resolve);
                 video.play();
-                
                 await new Promise(resolve => setTimeout(resolve, 100));
-
                 const rect = previewBox.getBoundingClientRect();
                 const dpr = window.devicePixelRatio || 1;
-
                 canvas.width = rect.width * dpr;
                 canvas.height = rect.height * dpr;
                 const ctx = canvas.getContext('2d');
-                
                 ctx.drawImage(video, 
                     rect.left * dpr, rect.top * dpr, rect.width * dpr, rect.height * dpr,
                     0, 0, canvas.width, canvas.height
                 );
-
                 const a = document.createElement('a');
                 a.href = canvas.toDataURL('image/png');
                 a.download = 'latex-preview.png';
                 a.click();
-
             } catch (err) {
                 console.error("截图失败:", err);
                 if (err.name !== 'NotAllowedError') {
-                     alert("截图失败，请确保您在本地HTML文件中运行，而不是在iframe里。");
+                     alert("截图失败，请确保您在本地HTML文件中运行。");
                 }
             } finally {
                 if (stream) stream.getTracks().forEach(t => t.stop());
@@ -431,7 +475,7 @@
         
         // --- 初始事件绑定和运行 ---
         latexInputBox.addEventListener('input', updateOutputs);
-        updateOutputs(); // 页面加载时运行一次，确保初始状态正确
+        updateOutputs();
     </script>
 
 </body>
