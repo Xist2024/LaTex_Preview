@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX 智能渲染器 (最终版)</title>
+    <style>
+        /* --- 全局样式 --- */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #f0f0f0; /* 全局文字颜色，确保在深色背景上可见 */
+            background-color: #007bff; /* 备用背景色 */
+            background-image: linear-gradient(to bottom right, #007bff, #20c997);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* --- 卡片基础样式 --- */
+        .card-base {
+            background: rgba(255, 255, 255, 0.20); /* 毛玻璃效果 */
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 800px; /* 设定最大宽度 */
+            position: relative;
+            overflow: hidden;
+            padding: 30px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* 内部元素间距 */
+        }
+        
+        /* --- 标题和文本样式 --- */
+        h1 {
+            text-align: center;
+            margin: 0 0 10px 0;
+            font-size: 2.2em;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+        p {
+            text-align: center;
+            margin: 0;
+            font-size: 1.1em;
+            color: #e0e0e0;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
+        }
+
+        /* --- 文本输入区样式 --- */
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1.2rem;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            box-sizing: border-box;
+            resize: vertical; /* 允许用户垂直调整大小 */
+            transition: all 0.3s ease;
+        }
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        textarea:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        /* --- 按钮区域和通用按钮样式 --- */
+        .button-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .button-base {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .button-base:hover {
+            /* background: rgba(255, 255, 255, 0.25); */ /* 移除基础悬停颜色变化 */
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .button-base:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 特定按钮颜色 */
+        .gemini-button {
+            /* 替换为蓝紫渐变和更强的交互效果 */
+            background: linear-gradient(to right, #8965e0 0%, #5e72e4 51%, #8965e0 100%);
+            background-size: 200% auto;
+            transition: all .5s ease-out;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .gemini-button:hover {
+            /* background-position: right center; */ /* 移除渐变滑动效果 */
+            transform: translateY(-4px); /* 悬停时向上浮动 */
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .render-button-png { background-color: rgba(80, 150, 220, 0.5); }
+        .render-button-png:hover { /* background-color: rgba(80, 150, 220, 0.7); */ } /* 移除颜色变化 */
+        
+        .render-button-screenshot { background-color: rgba(40, 167, 69, 0.5); }
+        .render-button-screenshot:hover { /* background-color: rgba(40, 167, 69, 0.7); */ } /* 移除颜色变化 */
+        .render-button-screenshot:disabled {
+            background: rgba(150, 150, 150, 0.5);
+            cursor: wait;
+            transform: none;
+        }
+
+        /* --- SVG 预览区样式 --- */
+        .preview-container {
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            margin-top: 15px;
+            padding-top: 25px;
+            display: none; 
+            text-align: center;
+        }
+        .preview-container h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f0f0f0;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+        }
+        .preview-box {
+            width: 100%;
+            min-height: 100px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 25px;
+            box-sizing: border-box;
+            overflow: auto;
+        }
+        #svgPreviewImage {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* --- 弹窗样式 (Modal) --- */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0.3s, opacity 0.3s;
+        }
+        .modal.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background: rgba(50, 50, 50, 0.5);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+            padding: 30px 40px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            color: #f0f0f0;
+            animation: fadeInScale 0.3s ease-out;
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 15px;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.8em;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+        }
+        .close-button {
+            font-size: 2em;
+            font-weight: bold;
+            color: #f0f0f0;
+            cursor: pointer;
+            background: none;
+            border: none;
+            opacity: 0.7;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .close-button:hover {
+            opacity: 1;
+            transform: rotate(90deg);
+        }
+        .modal-body {
+            font-size: 1.1em;
+            line-height: 1.7;
+            white-space: pre-wrap; /* 保持换行和空格 */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card-base">
+        <h1>LaTeX 智能渲染器</h1>
+        <p>请直接输入 LaTeX 代码:</p>
+        
+        <textarea id="latexInput" placeholder="例如：\frac{-b \pm \sqrt{b^2-4ac}}{2a}"></textarea>
+        
+        <div class="button-container">
+            <!-- Gemini Features -->
+            <button id="geminiExplainButton" class="button-base gemini-button">✨ 解释公式</button>
+
+            <!-- Original Features -->
+            <a id="pngLinkButton" href="#" class="button-base render-button-png" target="_blank" rel="noopener noreferrer">打开 PNG</a>
+            <button id="screenshotButton" class="button-base render-button-screenshot">下载预览截图</button>
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+            <h3>实时矢量图 (SVG) 预览</h3>
+            <div class="preview-box" id="previewBox">
+                <img id="svgPreviewImage" src="" alt="LaTeX 预览">
+            </div>
+        </div>
+    </div>
+
+    <!-- Explanation Modal -->
+    <div class="modal" id="explanationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✨ AI解释当前输入内容</h2>
+                <button class="close-button" id="closeModalButton">&times;</button>
+            </div>
+            <div class="modal-body" id="explanationOutput">
+                正在思考中...（预计需要10秒）
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 获取所有需要的 HTML 元素 ---
+        const latexInputBox = document.getElementById('latexInput');
+        const pngLinkButton = document.getElementById('pngLinkButton');
+        const previewContainer = document.getElementById('previewContainer');
+        const svgPreviewImage = document.getElementById('svgPreviewImage');
+        const previewBox = document.getElementById('previewBox');
+        const screenshotButton = document.getElementById('screenshotButton');
+        const geminiExplainButton = document.getElementById('geminiExplainButton');
+        const explanationModal = document.getElementById('explanationModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const explanationOutput = document.getElementById('explanationOutput');
+
+        // --- 常量定义 ---
+        const staticPrefix = "\\inline&space;\\huge&space;\\dpi{110}\\bg{white}";
+        const pngBaseURL = "https://latex.codecogs.com/png.image?";
+        const svgBaseURL = "https://latex.codecogs.com/svg.image?";
+        
+        // 在Canvas环境中，apiKey留空，平台会自动提供。
+        // 如果您在自己的本地或服务器上运行，请在此处填入您自己的密钥。
+        const apiKey = "AIzaSyA7_m3XrkpXbVyYeO3rLL-j7Kc-nosyzJg"; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // --- Gemini API 调用函数 ---
+        async function callGemini(systemInstruction, userPrompt) {
+            try {
+                const payload = {
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}. Please check the console for details.`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                return text || "抱歉，无法获取解释。请检查您的输入或API密钥。";
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                return `出错了: ${error.message}`;
+            }
+        }
+
+        // --- 更新预览和链接的函数 ---
+        function updateOutputs() {
+            const userInput = latexInputBox.value.trim();
+            
+            if (userInput === "") {
+                previewContainer.style.display = "none";
+                svgPreviewImage.src = "";
+                return;
+            }
+
+            previewContainer.style.display = "block";
+            const encodedInput = encodeURIComponent(userInput);
+            
+            pngLinkButton.href = pngBaseURL + staticPrefix + encodedInput;
+            svgPreviewImage.src = svgBaseURL + staticPrefix + encodedInput;
+        }
+
+        // --- Gemini 功能逻辑 ---
+        geminiExplainButton.addEventListener('click', async () => {
+            const latexCode = latexInputBox.value.trim();
+            if (!latexCode) {
+                alert("输入框中没有公式可以解释。");
+                return;
+            }
+
+            explanationOutput.textContent = "正在思考中...";
+            explanationModal.classList.add('show');
+
+            const systemInstruction = "You are a friendly and helpful math and science tutor. Explain the following mathematical formula, which is written in LaTeX, in simple and easy-to-understand Chinese. Explain what the overall formula means and what each variable or symbol represents.";
+            const explanation = await callGemini(systemInstruction, latexCode);
+
+            explanationOutput.textContent = explanation;
+        });
+
+        // --- 弹窗控制 ---
+        closeModalButton.addEventListener('click', () => explanationModal.classList.remove('show'));
+        // 点击弹窗外部区域也可以关闭
+        explanationModal.addEventListener('click', (event) => {
+            if (event.target === explanationModal) {
+                explanationModal.classList.remove('show');
+            }
+        });
+
+        // --- 屏幕捕捉脚本 ---
+        screenshotButton.addEventListener('click', captureAndDownloadPreview);
+
+        async function captureAndDownloadPreview() {
+            if (previewContainer.style.display === 'none' || latexInputBox.value.trim() === '') {
+                alert("预览区是空的，无法截图。");
+                return;
+            }
+
+            screenshotButton.disabled = true;
+            screenshotButton.textContent = "请授权...";
+
+            let stream = null, canvas = document.createElement('canvas'), video = document.createElement('video');
+
+            try {
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { mediaSource: "browser" },
+                    audio: false,
+                    preferCurrentTab: true
+                });
+
+                const track = stream.getVideoTracks()[0];
+                video.srcObject = stream;
+                
+                await new Promise(resolve => video.onloadedmetadata = resolve);
+                video.play();
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const rect = previewBox.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.drawImage(video, 
+                    rect.left * dpr, rect.top * dpr, rect.width * dpr, rect.height * dpr,
+                    0, 0, canvas.width, canvas.height
+                );
+
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = 'latex-preview.png';
+                a.click();
+
+            } catch (err) {
+                console.error("截图失败:", err);
+                if (err.name !== 'NotAllowedError') {
+                     alert("截图失败，请确保您在本地HTML文件中运行，而不是在iframe里。");
+                }
+            } finally {
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                canvas.remove();
+                video.remove();
+                screenshotButton.disabled = false;
+                screenshotButton.textContent = "下载预览截图";
+            }
+        }
+        
+        // --- 初始事件绑定和运行 ---
+        latexInputBox.addEventListener('input', updateOutputs);
+        updateOutputs(); // 页面加载时运行一次，确保初始状态正确
+    </script>
+
+</body>
+</html>
+
+
