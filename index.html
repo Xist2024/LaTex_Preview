@@ -250,20 +250,19 @@
 
     <div class="card-base">
         <h1>LaTeX渲染器</h1>
-        <p>可以在这里输入你的问题，然后点击按钮Deepseek解释公式获得你的答案！</p>
+        <p>一个与AI集成的渲染LaTex格式的网站</p>
         
-        <textarea id="latexInput" placeholder="例如：\frac{-b \pm \sqrt{b^2-4ac}}{2a}"></textarea>
+        <textarea id="latexInput" placeholder="可以在这里输入你的问题，然后点击按钮Deepseek解释公式获得你的答案！"></textarea>
         
         <div class="button-container">
             <!-- Gemini Button -->
             <button id="geminiExplainButton" class="button-base gemini-button"> ✨ </button>
             
             <!-- DeepSeek Button -->
-            <button id="deepseekTestButton" class="button-base deepseek-button">Deepseek解释公式</button>
+            <button id="deepseekTestButton" class="button-base deepseek-button">Deepseek解释问题</button>
 
             <!-- Original Features -->
-            <a id="pngLinkButton" href="#" class="button-base render-button-png" target="_blank" rel="noopener noreferrer">打开 PNG</a>
-            <button id="screenshotButton" class="button-base render-button-screenshot">下载预览截图</button>
+            <a id="pngLinkButton" href="#" class="button-base render-button-png" target="_blank" rel="noopener noreferrer">打开PNG并保存</a>
         </div>
 
         <div class="preview-container" id="previewContainer">
@@ -407,11 +406,10 @@
                 alert("输入框中没有公式可以测试。");
                 return;
             }
-            modalTitle.textContent = "🧪 DeepSeek 模型测试";
-            explanationOutput.textContent = "正在调用 DeepSeek...";
+            modalTitle.textContent = "🧪DeepSeek 模型测试";
+            explanationOutput.textContent = "正在调用 DeepSeek...（预计约5秒左右）";
             explanationModal.classList.add('show');
-            const systemInstruction = "You are an AI assistant. The user will provide a LaTeX formula. Respond by explaining what the formula is in simple Chinese.";
-            const explanation = await callDeepSeek(systemInstruction, latexCode);
+const systemInstruction = "You are an intelligent AI assistant, users will ask you questions, and you need to answer them kindly. When users send you LaTeX text, you need to explain the meaning of this text and the underlying formula (if the LaTeX text is a formula that you know; if not, kindly explain the meaning of the expression they provided). Communicate entirely in Simplified Chinese..";            const explanation = await callDeepSeek(systemInstruction, latexCode);
             explanationOutput.textContent = explanation;
         });
 
