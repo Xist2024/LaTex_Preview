@@ -155,11 +155,15 @@
             color: #f0f0f0;
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
         }
+        
+        /* ★★★ 这里是主要修改点 ★★★ */
         .preview-box {
             width: 100%;
             min-height: 100px;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px dashed rgba(255, 255, 255, 0.4);
+            /* 1. 将背景改为白色 */
+            background: #ffffff;
+            /* 2. 边框改为浅灰色实线，更适合白色背景 */
+            border: 1px solid #ddd;
             border-radius: 10px;
             display: flex;
             justify-content: center;
@@ -167,6 +171,8 @@
             padding: 25px;
             box-sizing: border-box;
             overflow: auto;
+            /* 3. 添加内阴影增加质感 */
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
         }
         #svgPreviewImage {
             max-width: 100%;
@@ -255,13 +261,10 @@
         <textarea id="latexInput" placeholder="可以在这里输入你的问题，然后点击按钮Deepseek解释公式获得你的答案！"></textarea>
         
         <div class="button-container">
-            <!-- Gemini Button -->
             <button id="geminiExplainButton" class="button-base gemini-button"> ✨ </button>
             
-            <!-- DeepSeek Button -->
             <button id="deepseekTestButton" class="button-base deepseek-button">Deepseek解释问题</button>
 
-            <!-- Original Features -->
             <a id="pngLinkButton" href="#" class="button-base render-button-png" target="_blank" rel="noopener noreferrer">打开PNG并保存</a>
             <button id="screenshotButton" class="button-base render-button-screenshot">下载预览截图</button>
         </div>
@@ -274,7 +277,6 @@
         </div>
     </div>
 
-    <!-- Explanation Modal -->
     <div class="modal" id="explanationModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -303,7 +305,9 @@
         const modalTitle = document.getElementById('modalTitle'); // 新增
 
         // --- 常量定义 ---
-        const staticPrefix = "\\inline&space;\\huge&space;\\dpi{110}\\bg{white}";
+        // ★★★ 这里是另一个修改点 ★★★
+        // 移除了 \bg{white}，增加了 \color{black} 来确保在白色背景上显示黑色字体
+        const staticPrefix = "\\inline&space;\\huge&space;\\dpi{110}\\color{black}"; 
         const pngBaseURL = "https://latex.codecogs.com/png.image?";
         const svgBaseURL = "https://latex.codecogs.com/svg.image?";
         
@@ -410,7 +414,7 @@
             modalTitle.textContent = "🧪DeepSeek 模型测试";
             explanationOutput.textContent = "正在调用 DeepSeek...（预计约5秒左右）";
             explanationModal.classList.add('show');
-const systemInstruction = "You are an intelligent AI assistant, users will ask you questions, and you need to answer them kindly. When users send you LaTeX text, you need to explain the meaning of this text and the underlying formula (if the LaTeX text is a formula that you know; if not, kindly explain the meaning of the expression they provided). Communicate entirely in Simplified Chinese..";            const explanation = await callDeepSeek(systemInstruction, latexCode);
+const systemInstruction = "You are an intelligent AI assistant, users will ask you questions, and you need to answer them kindly. When users send you LaTeX text, you need to explain the meaning of this text and the underlying formula (if the LaTeX text is a formula that you know; if not, kindly explain the meaning of the expression they provided). Communicate entirely in Simplified Chinese..";           const explanation = await callDeepSeek(systemInstruction, latexCode);
             explanationOutput.textContent = explanation;
         });
 
@@ -461,7 +465,7 @@ const systemInstruction = "You are an intelligent AI assistant, users will ask y
             } catch (err) {
                 console.error("截图失败:", err);
                 if (err.name !== 'NotAllowedError') {
-                     alert("截图失败，请确保您在本地HTML文件中运行。");
+                      alert("截图失败，请确保您在本地HTML文件中运行。");
                 }
             } finally {
                 if (stream) stream.getTracks().forEach(t => t.stop());
@@ -479,5 +483,3 @@ const systemInstruction = "You are an intelligent AI assistant, users will ask y
 
 </body>
 </html>
-
-
