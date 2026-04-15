@@ -3,483 +3,582 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaTeX 智能渲染器 (最终版)</title>
+    <title>Math2LaTeX AI 工作流</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
     <style>
-        /* --- 全局样式 --- */
+        /* ================= 全局基础与毛玻璃样式 ================= */
         body {
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            color: #f0f0f0; /* 全局文字颜色，确保在深色背景上可见 */
-            background-color: #007bff; /* 备用背景色 */
+            color: #fff;
+            background-color: #007bff; 
             background-image: linear-gradient(to bottom right, #007bff, #20c997);
-            padding: 20px;
+            padding: 40px 20px;
             box-sizing: border-box;
+            gap: 30px; 
         }
 
-        /* --- 卡片基础样式 --- */
         .card-base {
-            background: rgba(255, 255, 255, 0.20); /* 毛玻璃效果 */
-            backdrop-filter: blur(15px);
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-            width: 90%;
-            max-width: 800px; /* 设定最大宽度 */
+            text-align: center;
+            width: 100%;
+            max-width: 900px; 
             position: relative;
             overflow: hidden;
-            padding: 30px 40px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px; /* 内部元素间距 */
-        }
-        
-        /* --- 标题和文本样式 --- */
-        h1 {
-            text-align: center;
-            margin: 0 0 10px 0;
-            font-size: 2.2em;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
-        }
-        p {
-            text-align: center;
-            margin: 0;
-            font-size: 1.1em;
-            color: #e0e0e0;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
-        }
-
-        /* --- 文本输入区样式 --- */
-        textarea {
-            width: 100%;
-            height: 120px;
-            padding: 15px;
-            font-family: "Courier New", Courier, monospace;
-            font-size: 1.2rem;
-            color: #fff;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            padding: 30px;
             box-sizing: border-box;
-            resize: vertical; /* 允许用户垂直调整大小 */
-            transition: all 0.3s ease;
-        }
-        textarea::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        textarea:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.7);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
         }
 
-        /* --- 按钮区域和通用按钮样式 --- */
-        .button-container {
+        .card-base:hover {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-title {
+            margin-top: 0;
+            font-size: 1.8em;
+            color: #f0f0f0;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* ================= 模块一：AI 识别区 ================= */
+        .instruction-text {
+            font-size: 1.1em;
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.15);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px dashed rgba(255,255,255,0.4);
+        }
+
+        #file-input { display: none; }
+
+        .btn-group {
             display: flex;
             gap: 15px;
-            flex-wrap: wrap;
             justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap; 
         }
-        .button-base {
+
+        .action-button {
+            background: rgba(80, 150, 220, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
             padding: 12px 25px;
             font-size: 1.1em;
             font-weight: bold;
             color: #fff;
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-decoration: none;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-        .button-base:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
-        .button-base:active {
-            transform: translateY(0);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        /* 特定按钮颜色 */
-        .gemini-button {
-            background: linear-gradient(to right, #8965e0 0%, #5e72e4 51%, #8965e0 100%);
-            background-size: 200% auto;
-            transition: all .5s ease-out;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        .gemini-button:hover {
-            background-position: right center;
-            transform: translateY(-4px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        .action-button:hover:not(:disabled) {
+            background: rgba(80, 150, 220, 0.6);
+            transform: translateY(-2px);
         }
         
-        /* --- 新增：DeepSeek Test 按钮样式 --- */
-        .deepseek-button {
-            background: linear-gradient(to right, #11cdef 0%, #1171ef 51%, #11cdef 100%);
-            background-size: 200% auto;
-            transition: all .5s ease-out;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        .deepseek-button:hover {
-            background-position: right center;
-            transform: translateY(-4px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
-        
-        .render-button-png { background-color: rgba(80, 150, 220, 0.5); }
-        .render-button-screenshot { background-color: rgba(40, 167, 69, 0.5); }
-        .render-button-screenshot:disabled {
-            background: rgba(150, 150, 150, 0.5);
-            cursor: wait;
+        .action-button:disabled {
+            background: rgba(150, 150, 150, 0.3);
+            cursor: not-allowed;
+            color: rgba(255,255,255,0.5);
             transform: none;
         }
 
-        /* --- SVG 预览区样式 --- */
-        .preview-container {
-            border-top: 1px solid rgba(255, 255, 255, 0.3);
-            margin-top: 15px;
-            padding-top: 25px;
-            display: none; 
-            text-align: center;
+        .action-button.primary {
+            background: rgba(46, 204, 113, 0.5); 
         }
-        .preview-container h3 {
-            margin: 0 0 15px 0;
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #f0f0f0;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
-        }
-        
-        /* ★★★ 这里是主要修改点 ★★★ */
-        .preview-box {
-            width: 100%;
-            min-height: 100px;
-            /* 1. 将背景改为白色 */
-            background: #ffffff;
-            /* 2. 边框改为浅灰色实线，更适合白色背景 */
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 25px;
-            box-sizing: border-box;
-            overflow: auto;
-            /* 3. 添加内阴影增加质感 */
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
-        }
-        #svgPreviewImage {
-            max-width: 100%;
-            height: auto;
+        .action-button.primary:hover:not(:disabled) {
+            background: rgba(46, 204, 113, 0.7);
         }
 
-        /* --- 弹窗样式 (Modal) --- */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            visibility: hidden;
-            opacity: 0;
-            transition: visibility 0.3s, opacity 0.3s;
-        }
-        .modal.show {
-            visibility: visible;
-            opacity: 1;
-        }
-        .modal-content {
-            background: rgba(50, 50, 50, 0.5);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-            padding: 30px 40px;
-            width: 90%;
-            max-width: 700px;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-            color: #f0f0f0;
-            animation: fadeInScale 0.3s ease-out;
-        }
-        @keyframes fadeInScale {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        #image-preview-container {
+            display: none;
             margin-bottom: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-            padding-bottom: 15px;
+            position: relative;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .modal-header h2 {
-            margin: 0;
-            font-size: 1.8em;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+
+        #image-preview {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .close-button {
-            font-size: 2em;
-            font-weight: bold;
-            color: #f0f0f0;
+
+        .remove-img-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(220, 80, 80, 0.9);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
             cursor: pointer;
-            background: none;
-            border: none;
-            opacity: 0.7;
-            transition: opacity 0.2s, transform 0.2s;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        .close-button:hover {
-            opacity: 1;
-            transform: rotate(90deg);
+        .remove-img-btn:hover { transform: scale(1.1); }
+
+        /* ================= 模块二：原生渲染区 ================= */
+        #render-card {
+            display: none;
+            opacity: 0;
+            animation: fadeIn 0.4s forwards;
         }
-        .modal-body {
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .render-workflow {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .latex-input-container {
+            position: relative;
+            width: 100%;
+        }
+
+        textarea#latex-input {
+            width: 100%;
+            min-height: 80px; 
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: #fff;
+            padding: 15px 15px 45px 15px; 
+            font-family: 'Consolas', 'Courier New', monospace;
             font-size: 1.1em;
-            line-height: 1.7;
-            white-space: pre-wrap; /* 保持换行和空格 */
+            box-sizing: border-box;
+            resize: none; 
+            overflow: hidden; 
+            outline: none;
+            transition: border-color 0.3s;
         }
+
+        textarea#latex-input:focus {
+            border-color: rgba(255,255,255,0.8);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .copy-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9em;
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.4); }
+
+        /* --- 彻底修复滚动裁切的核心代码 --- */
+        .render-viewport {
+            background: #ffffff; 
+            border-radius: 10px;
+            min-height: 100px;
+            overflow-x: auto; /* 允许横向滚动 */
+            overflow-y: hidden; 
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
+            border: 2px solid rgba(0,0,0,0.1);
+            display: block; /* 废弃 Flexbox 强制居中，恢复标准文档流 */
+        }
+
+        .export-wrapper {
+            background: #ffffff; 
+            color: #000000; 
+            padding: 30px 40px; /* 增加舒适的内边距 */
+            font-size: 1.6em; 
+            min-width: 100%; 
+            width: max-content; /* 强制撑满内部宽度，保证不被截断 */
+            box-sizing: border-box;
+            display: block; /* 废弃 Flexbox */
+            text-align: center; /* 借用 text-align 实现基本的居中，当超出时自然向右延伸 */
+        }
+
+        /* 下载链接栏 */
+        .render-actions {
+            display: none; 
+            justify-content: flex-end;
+            margin-top: -5px;
+        }
+
+        .download-img-btn {
+            background: rgba(46, 204, 113, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: 1em;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .download-img-btn:hover {
+            background: rgba(46, 204, 113, 0.7);
+            transform: translateY(-2px);
+        }
+
+        .download-img-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* ================= Toast 通知 ================= */
+        #toast-notification {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(46, 204, 113, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            font-size: 1.1em;
+            font-weight: bold;
+            z-index: 9999;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            visibility: hidden;
+            white-space: nowrap;
+        }
+
+        #toast-notification.show { top: 30px; opacity: 1; visibility: visible; }
+        #toast-notification.error { background: rgba(231, 76, 60, 0.9); }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="card-base">
-        <h1>LaTeX渲染器</h1>
-        <p>一个与AI集成的渲染LaTex格式的网站</p>
-        
-        <textarea id="latexInput" placeholder="可以在这里输入你的问题，然后点击按钮Deepseek解释公式获得你的答案！"></textarea>
-        
-        <div class="button-container">
-            <button id="geminiExplainButton" class="button-base gemini-button"> ✨ </button>
-            
-            <button id="deepseekTestButton" class="button-base deepseek-button">Deepseek解释问题</button>
+    <div id="toast-notification"></div>
 
-            <a id="pngLinkButton" href="#" class="button-base render-button-png" target="_blank" rel="noopener noreferrer">打开PNG并保存</a>
-            <button id="screenshotButton" class="button-base render-button-screenshot">下载预览截图</button>
+    <div class="card-base">
+        <h2 class="card-title">🔍 AI 公式识别</h2>
+        
+        <div class="instruction-text">
+            无需点击按钮，在页面任何位置按下 <b>Ctrl + V</b> 即可粘贴截图。
         </div>
 
-        <div class="preview-container" id="previewContainer">
-            <h3>实时矢量图 (SVG) 预览</h3>
-            <div class="preview-box" id="previewBox">
-                <img id="svgPreviewImage" src="" alt="LaTeX 预览">
-            </div>
+        <div class="btn-group">
+            <button class="action-button" id="browse-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                手动选择图片
+            </button>
+            <button class="action-button" id="toggle-render-btn">
+                ✍️ 打开渲染器
+            </button>
+            <button class="action-button primary" id="convert-btn" disabled>
+                <span id="btn-text">✨ 识别并导入渲染器</span>
+                <div class="spinner" id="loading-spinner"></div>
+            </button>
+        </div>
+        <input type="file" id="file-input" accept="image/png, image/jpeg, image/webp">
+
+        <div id="image-preview-container">
+            <button class="remove-img-btn" id="remove-img-btn" title="移除图片">✕</button>
+            <img id="image-preview" src="" alt="截图预览">
         </div>
     </div>
 
-    <div class="modal" id="explanationModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">✨ 公式解释</h2>
-                <button class="close-button" id="closeModalButton">&times;</button>
+    <div class="card-base" id="render-card">
+        <h2 class="card-title">📝 实时 LaTeX 渲染 (KaTeX)</h2>
+        
+        <div class="render-workflow">
+            <div class="latex-input-container">
+                <textarea id="latex-input" placeholder="输入 LaTeX 代码，或等待上方 AI 填充..."></textarea>
+                <button class="copy-btn" id="copy-btn">复制文本</button>
             </div>
-            <div class="modal-body" id="explanationOutput">
-                正在思考中...
+
+            <div class="render-viewport">
+                <div class="export-wrapper" id="latex-render-area">
+                    <span style="color: #999; font-size: 0.7em;">公式实时预览区</span>
+                </div>
+            </div>
+            
+            <div class="render-actions" id="render-actions">
+                <a href="#" class="download-img-btn" id="download-img-btn" target="_blank" rel="noopener noreferrer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    打开 PNG 并保存
+                </a>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 获取所有需要的 HTML 元素 ---
-        const latexInputBox = document.getElementById('latexInput');
-        const pngLinkButton = document.getElementById('pngLinkButton');
-        const previewContainer = document.getElementById('previewContainer');
-        const svgPreviewImage = document.getElementById('svgPreviewImage');
-        const previewBox = document.getElementById('previewBox');
-        const screenshotButton = document.getElementById('screenshotButton');
-        const geminiExplainButton = document.getElementById('geminiExplainButton');
-        const deepseekTestButton = document.getElementById('deepseekTestButton'); // 新增
-        const explanationModal = document.getElementById('explanationModal');
-        const closeModalButton = document.getElementById('closeModalButton');
-        const explanationOutput = document.getElementById('explanationOutput');
-        const modalTitle = document.getElementById('modalTitle'); // 新增
-
-        // --- 常量定义 ---
-        // ★★★ 这里是另一个修改点 ★★★
-        // 移除了 \bg{white}，增加了 \color{black} 来确保在白色背景上显示黑色字体
+        const apiKey = "AIzaSyBMMD7uziauJWXAhMfnpMMZpHysaQRsx7s"; 
         const staticPrefix = "\\inline&space;\\huge&space;\\dpi{110}\\color{black}"; 
         const pngBaseURL = "https://latex.codecogs.com/png.image?";
-        const svgBaseURL = "https://latex.codecogs.com/svg.image?";
+
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const toggleRenderBtn = document.getElementById('toggle-render-btn');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const removeImgBtn = document.getElementById('remove-img-btn');
+        const convertBtn = document.getElementById('convert-btn');
+        const btnText = document.getElementById('btn-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
         
-        // --- Gemini API 配置 ---
-        const geminiApiKey = ""; 
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
+        const renderCard = document.getElementById('render-card');
+        const latexInput = document.getElementById('latex-input');
+        const latexRenderArea = document.getElementById('latex-render-area');
+        const renderActions = document.getElementById('render-actions');
+        const downloadImgBtn = document.getElementById('download-img-btn'); 
+        const copyBtn = document.getElementById('copy-btn');
+        const toastNotification = document.getElementById('toast-notification');
 
-        // --- 新增: DeepSeek API 配置 ---
-        // !!! 重要: 请在此处粘贴您的 DeepSeek API 密钥 !!!
-        const deepseekApiKey = "sk-b85b5fba97af4c96a80108954b894c4e"; 
-        const deepseekApiUrl = "https://api.deepseek.com/chat/completions";
+        let currentBase64Image = null;
+        let currentMimeType = null;
 
-        // --- Gemini API 调用函数 (不变) ---
-        async function callGemini(systemInstruction, userPrompt) {
-            try {
-                const payload = {
-                    contents: [{ parts: [{ text: userPrompt }] }],
-                    systemInstruction: { parts: [{ text: systemInstruction }] },
-                };
-                const response = await fetch(geminiApiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) throw new Error(`API request failed with status ${response.status}.`);
-                const result = await response.json();
-                return result.candidates?.[0]?.content?.parts?.[0]?.text || "抱歉，无法获取解释。";
-            } catch (error) {
-                console.error("Gemini API call failed:", error);
-                return `出错了: ${error.message}`;
-            }
+        function showToast(message, isError = false) {
+            toastNotification.textContent = message;
+            toastNotification.className = isError ? 'error show' : 'show';
+            setTimeout(() => { toastNotification.classList.remove('show'); }, 3000);
         }
-        
-        // --- 新增: DeepSeek API 调用函数 ---
-        async function callDeepSeek(systemInstruction, userPrompt) {
-            if (deepseekApiKey === "在此处粘贴您的 DeepSeek API 密钥" || !deepseekApiKey) {
-                return "错误：请在 JavaScript 代码中填入您的 DeepSeek API 密钥。";
+
+        function loadAndPreviewImage(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showToast("未能识别为有效图片", true);
+                return;
             }
-            try {
-                const payload = {
-                    model: "deepseek-chat", // DeepSeek 聊天模型
-                    messages: [
-                        { role: "system", content: systemInstruction },
-                        { role: "user", content: userPrompt }
-                    ]
-                };
-                const response = await fetch(deepseekApiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${deepseekApiKey}` // 使用 Bearer Token 认证
-                    },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) {
-                    const errorBody = await response.json();
-                    throw new Error(`API request failed with status ${response.status}. Details: ${JSON.stringify(errorBody)}`);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentBase64Image = e.target.result.split(',')[1];
+                currentMimeType = file.type;
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.style.display = 'block';
+                convertBtn.disabled = false;
+                showToast("图片已捕获，准备识别");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    loadAndPreviewImage(item.getAsFile());
+                    return;
                 }
-                const result = await response.json();
-                return result.choices?.[0]?.message?.content || "抱歉，无法获取解释。";
-            } catch (error) {
-                console.error("DeepSeek API call failed:", error);
-                return `出错了: ${error.message}`;
             }
+        });
+
+        browseBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) loadAndPreviewImage(e.target.files[0]);
+        });
+
+        removeImgBtn.addEventListener('click', () => {
+            currentBase64Image = null;
+            imagePreviewContainer.style.display = 'none';
+            convertBtn.disabled = true;
+            fileInput.value = ""; 
+        });
+
+        toggleRenderBtn.addEventListener('click', () => {
+            if (renderCard.style.display === 'none' || renderCard.style.display === '') {
+                renderCard.style.display = 'block';
+                latexInput.focus();
+                renderCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                renderCard.style.display = 'none';
+            }
+        });
+
+        function autoResizeTextarea(el) {
+            el.style.height = 'auto'; 
+            el.style.height = (el.scrollHeight) + 'px'; 
         }
 
+        function updateRenderArea() {
+            autoResizeTextarea(latexInput);
 
-        // --- 更新预览和链接的函数 (不变) ---
-        function updateOutputs() {
-            const userInput = latexInputBox.value.trim();
-            if (userInput === "") {
-                previewContainer.style.display = "none";
-                svgPreviewImage.src = "";
+            const rawLatex = latexInput.value.trim();
+            if (!rawLatex) {
+                latexRenderArea.innerHTML = '<span style="color: #999; font-size: 0.7em;">公式实时预览区</span>';
+                renderActions.style.display = 'none'; 
+                downloadImgBtn.href = "#";
                 return;
             }
-            previewContainer.style.display = "block";
-            const encodedInput = encodeURIComponent(userInput);
-            pngLinkButton.href = pngBaseURL + staticPrefix + encodedInput;
-            svgPreviewImage.src = svgBaseURL + staticPrefix + encodedInput;
-        }
 
-        // --- Gemini 功能逻辑 (不变) ---
-        geminiExplainButton.addEventListener('click', async () => {
-            const latexCode = latexInputBox.value.trim();
-            if (!latexCode) {
-                alert("输入框中没有公式可以解释。");
-                return;
+            let cleanLatex = rawLatex
+                .replace(/```latex/g, '').replace(/```math/g, '').replace(/```/g, '').trim();
+
+            if (cleanLatex.includes('\n') && !cleanLatex.includes('\\begin{')) {
+                let lines = cleanLatex.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                
+                if (lines.length > 1) {
+                    let processedLines = lines.map(line => {
+                        if (!line.includes('&') && line.indexOf('=') !== -1) {
+                            return line.replace('=', '&=');
+                        }
+                        return line;
+                    });
+                    
+                    processedLines = processedLines.map((line, index) => {
+                         let cleanLine = line.replace(/\\\\$/, '').trim(); 
+                         if (index < processedLines.length - 1) {
+                             return cleanLine + ' \\\\';
+                         }
+                         return cleanLine;
+                    });
+
+                    cleanLatex = "\\begin{aligned}\n" + processedLines.join('\n') + "\n\\end{aligned}";
+                }
             }
-            modalTitle.textContent = "✨ Gemini 公式解释";
-            explanationOutput.textContent = "正在调用 Gemini...";
-            explanationModal.classList.add('show');
-            const systemInstruction = "You are a friendly and helpful math and science tutor. Explain the following mathematical formula, which is written in LaTeX, in simple and easy-to-understand Chinese. Explain what the overall formula means and what each variable or symbol represents.";
-            const explanation = await callGemini(systemInstruction, latexCode);
-            explanationOutput.textContent = explanation;
-        });
-        
-        // --- 新增: DeepSeek 功能逻辑 ---
-        deepseekTestButton.addEventListener('click', async () => {
-            const latexCode = latexInputBox.value.trim();
-            if (!latexCode) {
-                alert("输入框中没有公式可以测试。");
-                return;
-            }
-            modalTitle.textContent = "🧪DeepSeek 模型测试";
-            explanationOutput.textContent = "正在调用 DeepSeek...（预计约5秒左右）";
-            explanationModal.classList.add('show');
-const systemInstruction = "You are an intelligent AI assistant, users will ask you questions, and you need to answer them kindly. When users send you LaTeX text, you need to explain the meaning of this text and the underlying formula (if the LaTeX text is a formula that you know; if not, kindly explain the meaning of the expression they provided). Communicate entirely in Simplified Chinese..";           const explanation = await callDeepSeek(systemInstruction, latexCode);
-            explanationOutput.textContent = explanation;
-        });
 
-
-        // --- 弹窗控制 (不变) ---
-        closeModalButton.addEventListener('click', () => explanationModal.classList.remove('show'));
-        explanationModal.addEventListener('click', (event) => {
-            if (event.target === explanationModal) {
-                explanationModal.classList.remove('show');
-            }
-        });
-
-        // --- 屏幕捕捉脚本 (不变) ---
-        screenshotButton.addEventListener('click', captureAndDownloadPreview);
-
-        async function captureAndDownloadPreview() {
-            if (previewContainer.style.display === 'none' || latexInputBox.value.trim() === '') {
-                alert("预览区是空的，无法截图。");
-                return;
-            }
-            screenshotButton.disabled = true;
-            screenshotButton.textContent = "请授权...";
-            let stream = null, canvas = document.createElement('canvas'), video = document.createElement('video');
             try {
-                stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { mediaSource: "browser" },
-                    audio: false,
-                    preferCurrentTab: true
-                });
-                const track = stream.getVideoTracks()[0];
-                video.srcObject = stream;
-                await new Promise(resolve => video.onloadedmetadata = resolve);
-                video.play();
-                await new Promise(resolve => setTimeout(resolve, 100));
-                const rect = previewBox.getBoundingClientRect();
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = rect.width * dpr;
-                canvas.height = rect.height * dpr;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 
-                    rect.left * dpr, rect.top * dpr, rect.width * dpr, rect.height * dpr,
-                    0, 0, canvas.width, canvas.height
-                );
-                const a = document.createElement('a');
-                a.href = canvas.toDataURL('image/png');
-                a.download = 'latex-preview.png';
-                a.click();
+                if (window.katex) {
+                    katex.render(cleanLatex, latexRenderArea, {
+                        throwOnError: false, 
+                        displayMode: true, 
+                        strict: false 
+                    });
+                    
+                    const encodedInput = encodeURIComponent(cleanLatex);
+                    downloadImgBtn.href = pngBaseURL + staticPrefix + encodedInput;
+
+                    renderActions.style.display = 'flex'; 
+                }
             } catch (err) {
-                console.error("截图失败:", err);
-                if (err.name !== 'NotAllowedError') {
-                      alert("截图失败，请确保您在本地HTML文件中运行。");
-                }
-            } finally {
-                if (stream) stream.getTracks().forEach(t => t.stop());
-                canvas.remove();
-                video.remove();
-                screenshotButton.disabled = false;
-                screenshotButton.textContent = "下载预览截图";
+                latexRenderArea.innerHTML = `<span style="color: red; font-size: 0.8em;">渲染错误: ${err.message}</span>`;
+                renderActions.style.display = 'none';
+                downloadImgBtn.href = "#";
             }
         }
-        
-        // --- 初始事件绑定和运行 ---
-        latexInputBox.addEventListener('input', updateOutputs);
-        updateOutputs();
-    </script>
 
+        latexInput.addEventListener('input', updateRenderArea);
+
+        convertBtn.addEventListener('click', async () => {
+            if (!currentBase64Image) return;
+
+            convertBtn.disabled = true;
+            btnText.style.display = 'none';
+            loadingSpinner.style.display = 'block';
+
+            const promptText = "Extract the mathematical formula from this image. Output ONLY the raw LaTeX code without any markdown or explanations.";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: promptText },
+                        { inlineData: { mimeType: currentMimeType || "image/jpeg", data: currentBase64Image } }
+                    ]
+                }]
+            };
+
+            try {
+                let response = null;
+                const maxRetries = 5;
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                
+                for(let i=0; i < maxRetries; i++) {
+                     try {
+                         const fetchRes = await fetch(url, {
+                             method: 'POST',
+                             headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify(payload)
+                         });
+                         
+                         if(fetchRes.ok) {
+                             response = await fetchRes.json();
+                             break;
+                         } else throw new Error(`HTTP Error: ${fetchRes.status}`);
+                     } catch (e) {
+                         if (i === maxRetries - 1) throw e;
+                         await new Promise(res => setTimeout(res, delays[i]));
+                     }
+                }
+
+                if (response && response.candidates && response.candidates[0].content.parts[0].text) {
+                    renderCard.style.display = 'block';
+                    
+                    latexInput.value = response.candidates[0].content.parts[0].text;
+                    updateRenderArea();
+                    showToast("✅ 识别并渲染成功");
+                    
+                    renderCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    throw new Error("识别结果为空");
+                }
+            } catch (error) {
+                console.error("API Error:", error);
+                showToast(`❌ 识别出错: ${error.message}`, true);
+            } finally {
+                convertBtn.disabled = false;
+                btnText.style.display = 'inline';
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            latexInput.select();
+            document.execCommand('copy');
+            showToast("已复制到剪贴板");
+        });
+
+    </script>
 </body>
 </html>
