@@ -58,7 +58,8 @@
         }
 
         /* ================= 模块一：AI 识别区 ================= */
-        .instruction-text {
+        /* 将原本的 div 样式适配给 input 元素 */
+        input.instruction-text {
             font-size: 1.1em;
             text-shadow: 0 0 5px rgba(0,0,0,0.3);
             margin-bottom: 20px;
@@ -66,6 +67,22 @@
             padding: 15px;
             border-radius: 10px;
             border: 1px dashed rgba(255,255,255,0.4);
+            width: 100%;
+            box-sizing: border-box;
+            color: #fff;
+            outline: none;
+            text-align: center;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        input.instruction-text::placeholder {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        input.instruction-text:focus {
+            background: rgba(0,0,0,0.25);
+            border-color: rgba(255,255,255,0.8);
         }
 
         #file-input { display: none; }
@@ -212,31 +229,29 @@
         }
         .copy-btn:hover { background: rgba(255,255,255,0.4); }
 
-        /* --- 彻底修复滚动裁切的核心代码 --- */
         .render-viewport {
             background: #ffffff; 
             border-radius: 10px;
             min-height: 100px;
-            overflow-x: auto; /* 允许横向滚动 */
+            overflow-x: auto; 
             overflow-y: hidden; 
             box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
             border: 2px solid rgba(0,0,0,0.1);
-            display: block; /* 废弃 Flexbox 强制居中，恢复标准文档流 */
+            display: block; 
         }
 
         .export-wrapper {
             background: #ffffff; 
             color: #000000; 
-            padding: 30px 40px; /* 增加舒适的内边距 */
+            padding: 30px 40px; 
             font-size: 1.6em; 
             min-width: 100%; 
-            width: max-content; /* 强制撑满内部宽度，保证不被截断 */
+            width: max-content; 
             box-sizing: border-box;
-            display: block; /* 废弃 Flexbox */
-            text-align: center; /* 借用 text-align 实现基本的居中，当超出时自然向右延伸 */
+            display: block; 
+            text-align: center; 
         }
 
-        /* 下载链接栏 */
         .render-actions {
             display: none; 
             justify-content: flex-end;
@@ -314,9 +329,7 @@
     <div class="card-base">
         <h2 class="card-title">🔍 AI 公式识别</h2>
         
-        <div class="instruction-text">
-            无需点击按钮，在页面任何位置按下 <b>Ctrl + V</b> 即可粘贴截图。
-        </div>
+        <input type="text" class="instruction-text" id="custom-prompt" placeholder="在此输入文字；或无需点击按钮，在页面任何位置按 Ctrl + V 粘贴截图">
 
         <div class="btn-group">
             <button class="action-button" id="browse-btn">
@@ -369,6 +382,7 @@
         const pngBaseURL = "https://latex.codecogs.com/png.image?";
 
         const fileInput = document.getElementById('file-input');
+        const customPrompt = document.getElementById('custom-prompt');
         const browseBtn = document.getElementById('browse-btn');
         const toggleRenderBtn = document.getElementById('toggle-render-btn');
         const imagePreviewContainer = document.getElementById('image-preview-container');
@@ -395,6 +409,13 @@
             setTimeout(() => { toastNotification.classList.remove('show'); }, 3000);
         }
 
+        // 判断提交按钮是否应该启用（有图片，或者有文字，都可以启用）
+        function updateConvertBtnState() {
+            convertBtn.disabled = !currentBase64Image && customPrompt.value.trim() === '';
+        }
+
+        customPrompt.addEventListener('input', updateConvertBtnState);
+
         function loadAndPreviewImage(file) {
             if (!file || !file.type.startsWith('image/')) {
                 showToast("未能识别为有效图片", true);
@@ -406,8 +427,8 @@
                 currentMimeType = file.type;
                 imagePreview.src = e.target.result;
                 imagePreviewContainer.style.display = 'block';
-                convertBtn.disabled = false;
-                showToast("图片已捕获，准备识别");
+                updateConvertBtnState();
+                showToast("图片已捕获，可选择补充文字或直接识别");
             };
             reader.readAsDataURL(file);
         }
@@ -431,8 +452,8 @@
         removeImgBtn.addEventListener('click', () => {
             currentBase64Image = null;
             imagePreviewContainer.style.display = 'none';
-            convertBtn.disabled = true;
             fileInput.value = ""; 
+            updateConvertBtnState();
         });
 
         toggleRenderBtn.addEventListener('click', () => {
@@ -510,22 +531,33 @@
         latexInput.addEventListener('input', updateRenderArea);
 
         convertBtn.addEventListener('click', async () => {
-            if (!currentBase64Image) return;
+            const userText = customPrompt.value.trim();
+            if (!currentBase64Image && !userText) return; // 再次拦截空提交
 
             convertBtn.disabled = true;
             btnText.style.display = 'none';
             loadingSpinner.style.display = 'block';
 
-            const promptText = "Extract the mathematical formula from this image. Output ONLY the raw LaTeX code without any markdown or explanations.";
+            // 根据用户输入动态构建 Prompt
+            let instructionText = "Extract the mathematical formula from this image. Output ONLY the raw LaTeX code without any markdown or explanations.";
+            
+            if (!currentBase64Image) {
+                instructionText = "Convert the following request into pure LaTeX code. Output ONLY the raw LaTeX code without any markdown or explanations.\nRequest: " + userText;
+            } else if (userText) {
+                instructionText = "Extract the mathematical formula from this image and strictly follow these user instructions: " + userText + ". Output ONLY the raw LaTeX code without any markdown or explanations.";
+            }
+
+            const apiParts = [{ text: instructionText }];
+            if (currentBase64Image) {
+                apiParts.push({ inlineData: { mimeType: currentMimeType || "image/jpeg", data: currentBase64Image } });
+            }
+
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
             const payload = {
                 contents: [{
                     role: "user",
-                    parts: [
-                        { text: promptText },
-                        { inlineData: { mimeType: currentMimeType || "image/jpeg", data: currentBase64Image } }
-                    ]
+                    parts: apiParts
                 }]
             };
 
@@ -567,7 +599,7 @@
                 console.error("API Error:", error);
                 showToast(`❌ 识别出错: ${error.message}`, true);
             } finally {
-                convertBtn.disabled = false;
+                updateConvertBtnState(); // 恢复按钮状态
                 btnText.style.display = 'inline';
                 loadingSpinner.style.display = 'none';
             }
