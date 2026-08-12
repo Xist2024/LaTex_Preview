@@ -11,7 +11,8 @@
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
                 packages: {'[+]': ['physics', 'mhchem', 'cancel', 'color', 'boldsymbol']},
-                processEscapes: true
+                processEscapes: true,
+                maxBuffer: 100 * 1024  // 【关键修复】将缓冲区扩大到 100KB，防止超长公式或递归宏把渲染器撑爆
             },
             loader: {
                 load: ['[tex]/physics', '[tex]/mhchem', '[tex]/cancel', '[tex]/color', '[tex]/boldsymbol']
@@ -103,10 +104,9 @@
             font-size: 1.1em;
             user-select: text;
             line-height: 1.8;
-            display: block; /* 修复 Flex 居中导致的移动端溢出截断缺陷 */
+            display: block; 
         }
 
-        /* LaTeX 导出的标题样式渲染控制 */
         .render-area h2 {
             font-size: 1.4em;
             font-weight: bold;
@@ -126,17 +126,16 @@
             outline: none; 
         }
 
-        /* 针对块级数学公式开启独立容器的横向滚动 */
         mjx-container[display="true"] {
             overflow-x: auto;
             overflow-y: hidden;
             max-width: 100%;
-            scrollbar-width: none; /* Firefox */
+            scrollbar-width: none; 
             margin: 10px 0 !important;
         }
         
         mjx-container[display="true"]::-webkit-scrollbar {
-            display: none; /* Chrome/Safari */
+            display: none; 
         }
     </style>
 </head>
@@ -155,10 +154,8 @@
         let pendingContent = null;
         let lastRenderedContent = null;
         
-        // 使用 Promise 链构建严格的串行渲染队列
         let mjxPromise = Promise.resolve(); 
 
-        // 安全 HTML 转义，防止直接注入 script
         function escapeHTML(str) {
             return str.replace(/&/g, "&amp;")
                       .replace(/</g, "&lt;")
@@ -174,22 +171,18 @@
                 return;
             }
 
-            // 1. 清理导言区及 Markdown 代码块语法
             let content = rawContent.replace(/\\documentclass[\s\S]*?\\begin\{document\}/g, '')
                                     .replace(/\\end\{document\}/g, '')
                                     .replace(/```(latex|math)?/gi, '')
                                     .trim();
 
-            // 2. 转义基础 HTML 字符
             content = escapeHTML(content);
 
-            // 3. 预处理 LaTeX 文档级排版命令
             content = content
                 .replace(/\\section\*?\{([^}]+)\}/g, '<h2>$1</h2>')
                 .replace(/\\subsection\*?\{([^}]+)\}/g, '<h3>$1</h3>')
-                .replace(/\n\s*\n/g, '<br><br>'); // 保留正常段落空行
+                .replace(/\n\s*\n/g, '<br><br>'); 
 
-            // 4. 智能定界符检测（适用于纯数学公式片段）
             const hasMathDelimiters = /(\$|\\\[|\\\(|\\begin\{(align|equation|eqnarray|gather|multline|alignat|flalign|cd)\*?\})/.test(content);
             const hasHTMLTags = /<h[23]>/.test(content);
             
@@ -197,7 +190,6 @@
                 content = '\\[' + content + '\\]';
             }
 
-            // 5. 拦截重复渲染
             if (content === lastRenderedContent) return;
 
             pendingContent = content;
@@ -209,20 +201,23 @@
                 pendingContent = null;
                 lastRenderedContent = currentContent;
 
-                renderArea.innerHTML = currentContent;
-
-                if (window.MathJax && MathJax.typesetPromise) {
-                    // 强制清理 MathJax 渲染缓存，阻止内存泄漏
-                    MathJax.typesetClear([renderArea]);
+                // 【优化点】捕捉 MathJax 同步阶段可能抛出的 Buffer 异常
+                try {
+                    renderArea.innerHTML = currentContent;
                     
-                    return MathJax.typesetPromise([renderArea]).catch((err) => {
-                        renderArea.innerHTML = `<span style="color: red; font-size: 14px;">渲染错误: ${err.message}</span>`;
-                    });
+                    if (window.MathJax && MathJax.typesetPromise) {
+                        MathJax.typesetClear([renderArea]);
+                        
+                        return MathJax.typesetPromise([renderArea]).catch((err) => {
+                            renderArea.innerHTML = `<span style="color: red; font-size: 14px; font-weight: bold;">渲染错误: ${err.message}</span>`;
+                        });
+                    }
+                } catch (err) {
+                    renderArea.innerHTML = `<span style="color: red; font-size: 14px; font-weight: bold;">解析错误: ${err.message}</span>`;
                 }
             });
         }
 
-        // 防抖触发机制
         input.addEventListener('input', () => {
             clearTimeout(renderTimeout);
             renderTimeout = setTimeout(triggerRender, 120);
