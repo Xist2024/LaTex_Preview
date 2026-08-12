@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaTeX Renderer (Advanced MathJax)</title>
+    <title>LaTeX Renderer (Advanced MathJax - Optimized)</title>
     <!-- MathJax 3 核心配置 -->
     <script>
         window.MathJax = {
             tex: {
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
-                // 自动加载高级宏包：物理、化学、约分、颜色、加粗
                 packages: {'[+]': ['physics', 'mhchem', 'cancel', 'color', 'boldsymbol']},
                 processEscapes: true
             },
@@ -18,7 +17,7 @@
                 load: ['[tex]/physics', '[tex]/mhchem', '[tex]/cancel', '[tex]/color', '[tex]/boldsymbol']
             },
             startup: {
-                typeset: false // 取消自动渲染，交由下方脚本接管实时渲染
+                typeset: false 
             }
         };
     </script>
@@ -58,6 +57,7 @@
             overflow-y: auto;
             user-select: text;
             transition: background 0.2s;
+            will-change: height;
         }
 
         textarea:focus {
@@ -97,26 +97,52 @@
         .render-area {
             flex: 1;
             width: 100%;
-            padding: 20px 40px;
+            padding: 20px 15px; 
             overflow: auto;
             background: #ffffff;
-            font-size: 1.2em;
+            font-size: 1.1em;
             user-select: text;
-            white-space: pre-wrap; /* 支持纯文本换行与图文混排 */
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* 默认居中对齐 */
+            line-height: 1.8;
+            display: block; /* 修复 Flex 居中导致的移动端溢出截断缺陷 */
+        }
+
+        /* LaTeX 导出的标题样式渲染控制 */
+        .render-area h2 {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin: 15px 0 10px 0;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+
+        .render-area h3 {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 12px 0 8px 0;
         }
         
         mjx-container {
-            outline: none; /* 去除点击公式时出现的焦点框 */
+            outline: none; 
+        }
+
+        /* 针对块级数学公式开启独立容器的横向滚动 */
+        mjx-container[display="true"] {
+            overflow-x: auto;
+            overflow-y: hidden;
+            max-width: 100%;
+            scrollbar-width: none; /* Firefox */
+            margin: 10px 0 !important;
+        }
+        
+        mjx-container[display="true"]::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
         }
     </style>
 </head>
 <body>
 
-    <textarea id="latex-input" placeholder="输入 LaTeX 代码（支持图文混排、原生 align 环境、\require{mhchem} 等高级语法）..."></textarea>
+    <textarea id="latex-input" placeholder="输入 LaTeX 代码（支持图文混排、原生 align 环境、\section 标题排版等）..."></textarea>
     <div class="divider" id="divider"></div>
     <div class="render-area" id="render-area"></div>
 
@@ -126,10 +152,13 @@
         const renderArea = document.getElementById('render-area');
 
         let renderTimeout;
-        let isRendering = false;
-        let pendingRender = false;
+        let pendingContent = null;
+        let lastRenderedContent = null;
+        
+        // 使用 Promise 链构建严格的串行渲染队列
+        let mjxPromise = Promise.resolve(); 
 
-        // 转义HTML，防止输入 < 符号时破坏DOM结构
+        // 安全 HTML 转义，防止直接注入 script
         function escapeHTML(str) {
             return str.replace(/&/g, "&amp;")
                       .replace(/</g, "&lt;")
@@ -137,61 +166,73 @@
         }
 
         function triggerRender() {
-            if (isRendering) {
-                pendingRender = true;
-                return;
-            }
+            let rawContent = input.value.trim();
 
-            let rawVal = input.value;
-            let content = rawVal.trim();
-
-            if (!content) {
+            if (!rawContent) {
                 renderArea.innerHTML = '';
+                lastRenderedContent = '';
                 return;
             }
 
-            // 清理完整的 LaTeX 文档结构（导言区等）
-            content = content.replace(/\\documentclass[\s\S]*?\\begin\{document\}/g, '')
-                             .replace(/\\end\{document\}/g, '')
-                             .replace(/```(latex|math)?/gi, '')
-                             .trim();
+            // 1. 清理导言区及 Markdown 代码块语法
+            let content = rawContent.replace(/\\documentclass[\s\S]*?\\begin\{document\}/g, '')
+                                    .replace(/\\end\{document\}/g, '')
+                                    .replace(/```(latex|math)?/gi, '')
+                                    .trim();
 
-            // 智能定界符检测
-            // 如果用户输入中没有 $, \[, \( 或顶级的 display 环境，则判定为纯数学公式片段，自动包裹为 displayMath
+            // 2. 转义基础 HTML 字符
+            content = escapeHTML(content);
+
+            // 3. 预处理 LaTeX 文档级排版命令
+            content = content
+                .replace(/\\section\*?\{([^}]+)\}/g, '<h2>$1</h2>')
+                .replace(/\\subsection\*?\{([^}]+)\}/g, '<h3>$1</h3>')
+                .replace(/\n\s*\n/g, '<br><br>'); // 保留正常段落空行
+
+            // 4. 智能定界符检测（适用于纯数学公式片段）
             const hasMathDelimiters = /(\$|\\\[|\\\(|\\begin\{(align|equation|eqnarray|gather|multline|alignat|flalign|cd)\*?\})/.test(content);
+            const hasHTMLTags = /<h[23]>/.test(content);
             
-            if (!hasMathDelimiters && content.length > 0) {
+            if (!hasMathDelimiters && !hasHTMLTags && content.length > 0) {
                 content = '\\[' + content + '\\]';
             }
 
-            renderArea.innerHTML = escapeHTML(content);
+            // 5. 拦截重复渲染
+            if (content === lastRenderedContent) return;
 
-            if (window.MathJax && MathJax.typesetPromise) {
-                isRendering = true;
-                MathJax.typesetPromise([renderArea]).then(() => {
-                    isRendering = false;
-                    if (pendingRender) {
-                        pendingRender = false;
-                        triggerRender();
-                    }
-                }).catch((err) => {
-                    isRendering = false;
-                    renderArea.innerHTML = '<span style="color: red; font-size: 14px;">渲染错误: ' + err.message + '</span>';
-                });
-            }
+            pendingContent = content;
+
+            mjxPromise = mjxPromise.then(() => {
+                if (pendingContent === null) return;
+                
+                const currentContent = pendingContent;
+                pendingContent = null;
+                lastRenderedContent = currentContent;
+
+                renderArea.innerHTML = currentContent;
+
+                if (window.MathJax && MathJax.typesetPromise) {
+                    // 强制清理 MathJax 渲染缓存，阻止内存泄漏
+                    MathJax.typesetClear([renderArea]);
+                    
+                    return MathJax.typesetPromise([renderArea]).catch((err) => {
+                        renderArea.innerHTML = `<span style="color: red; font-size: 14px;">渲染错误: ${err.message}</span>`;
+                    });
+                }
+            });
         }
 
-        // 防抖：避免高频按键导致 MathJax 堆积渲染卡顿
+        // 防抖触发机制
         input.addEventListener('input', () => {
             clearTimeout(renderTimeout);
-            renderTimeout = setTimeout(triggerRender, 200);
+            renderTimeout = setTimeout(triggerRender, 120);
         });
 
         // ================= 拖拽调整大小逻辑 =================
         let isDragging = false;
 
         function startDrag(e) {
-            e.preventDefault(); // 防止在触屏设备上触发滚动
+            e.preventDefault(); 
             isDragging = true;
             divider.classList.add('active');
             document.body.style.cursor = 'ns-resize';
@@ -201,7 +242,6 @@
             if (!isDragging) return;
             const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0].clientY);
             if (!clientY) return;
-            // 限制输入框最小 50px，最大高度视窗减去 80px
             const newHeight = Math.max(50, Math.min(window.innerHeight - 80, clientY));
             input.style.height = `${newHeight}px`;
         }
