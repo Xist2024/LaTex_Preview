@@ -12,7 +12,7 @@
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
                 packages: {'[+]': ['physics', 'mhchem', 'cancel', 'color', 'boldsymbol']},
                 processEscapes: true,
-                maxBuffer: 100 * 1024  // 【关键修复】将缓冲区扩大到 100KB，防止超长公式或递归宏把渲染器撑爆
+                maxBuffer: 100 * 1024
             },
             loader: {
                 load: ['[tex]/physics', '[tex]/mhchem', '[tex]/cancel', '[tex]/color', '[tex]/boldsymbol']
@@ -137,9 +137,54 @@
         mjx-container[display="true"]::-webkit-scrollbar {
             display: none; 
         }
+
+        /* ================= 新增：截图专用模式样式 ================= */
+        body.capture-mode {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        body.capture-mode #latex-input,
+        body.capture-mode #divider,
+        body.capture-mode #capture-btn {
+            display: none !important;
+        }
+        body.capture-mode #render-area {
+            height: auto !important;
+            overflow: visible !important;
+            flex: none !important; 
+        }
+
+        /* ================= 新增：悬浮按钮样式 ================= */
+        #capture-btn {
+            position: fixed;
+            right: 30px;
+            bottom: 30px;
+            background: #0969da;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #capture-btn:hover {
+            background: #0550a6;
+            transform: scale(1.02);
+        }
+        #capture-btn:active {
+            transform: scale(0.98);
+        }
     </style>
 </head>
 <body>
+
+    <!-- 新增：一键进入长图模式的悬浮按钮 -->
+    <button id="capture-btn" onclick="prepareScreenshot()">📷 准备截取长图</button>
 
     <textarea id="latex-input" placeholder="输入 LaTeX 代码（支持图文混排、原生 align 环境、\section 标题排版等）..."></textarea>
     <div class="divider" id="divider"></div>
@@ -201,7 +246,6 @@
                 pendingContent = null;
                 lastRenderedContent = currentContent;
 
-                // 【优化点】捕捉 MathJax 同步阶段可能抛出的 Buffer 异常
                 try {
                     renderArea.innerHTML = currentContent;
                     
@@ -223,7 +267,6 @@
             renderTimeout = setTimeout(triggerRender, 120);
         });
 
-        // ================= 拖拽调整大小逻辑 =================
         let isDragging = false;
 
         function startDrag(e) {
@@ -256,6 +299,15 @@
         divider.addEventListener('touchstart', startDrag, { passive: false });
         document.addEventListener('touchmove', doDrag, { passive: false });
         document.addEventListener('touchend', stopDrag);
+
+        // ================= 新增：截图模式触发函数 =================
+        function prepareScreenshot() {
+            document.body.classList.add('capture-mode');
+            
+            setTimeout(() => {
+                alert('已进入“纯净排版模式”！\n\n代码框已隐藏，所有公式已完整展开并释放全局滚动条。\n\n此时请：\n1. 按下 Ctrl + Shift + P (Mac为 Cmd + Shift + P)\n2. 搜索 "full" 选择“截取完整网页屏幕截图”\n3. 截图完成后，直接按 F5 刷新网页即可恢复原有编辑状态。');
+            }, 100);
+        }
     </script>
 </body>
 </html>
