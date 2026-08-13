@@ -170,5 +170,9 @@
   \displaystyle \int_0^x e^{-t^2} dt & \text{if } x \in \mathbb{R} \setminus \mathbb{Q} \\ 
   \displaystyle \sum_{n=1}^\infty \frac{x^n}{n!} & \text{if } x \in \mathbb{C} 
   \end{cases} & \text{for } y \notin \mathbb{Q} 
-  \end{cases}
+  \end{cases} \\
+
+% 27. Extended Standard Model Lagrangian (Type-I Seesaw & SME Extensions)
+& \mathcal{L}_{\text{Extended}} = \mathcal{L}_{\text{SM}} + i \overline{N}_{Ri} \gamma^\mu \partial_\mu N_{Ri} - \left( Y^\nu_{ij} \overline{L}_i \tilde{\phi} N_{Rj} + \frac{1}{2} M_{ij} \overline{N}^c_{Ri} N_{Rj} + \text{h.c.} \right) \\
+& \quad - \frac{1}{2} (k_F)_{\kappa\lambda\mu\nu} F^{\kappa\lambda} F^{\mu\nu} + \overline{\psi} \left( i \Gamma^\nu D_\nu - M \right) \psi \quad {\small \text{(Lorentz-Violating Operators)}}
 \end{align*}
