@@ -138,15 +138,15 @@
             display: none; 
         }
 
-        /* ================= 新增：截图专用模式样式 ================= */
+        /* 截图专用模式样式 - 修复全局滚动条 */
+        html.capture-mode,
         body.capture-mode {
             display: block !important;
             height: auto !important;
             overflow: visible !important;
         }
         body.capture-mode #latex-input,
-        body.capture-mode #divider,
-        body.capture-mode #capture-btn {
+        body.capture-mode #divider {
             display: none !important;
         }
         body.capture-mode #render-area {
@@ -154,37 +154,9 @@
             overflow: visible !important;
             flex: none !important; 
         }
-
-        /* ================= 新增：悬浮按钮样式 ================= */
-        #capture-btn {
-            position: fixed;
-            right: 30px;
-            bottom: 30px;
-            background: #0969da;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 1000;
-            font-weight: bold;
-            transition: background 0.2s, transform 0.1s;
-        }
-        #capture-btn:hover {
-            background: #0550a6;
-            transform: scale(1.02);
-        }
-        #capture-btn:active {
-            transform: scale(0.98);
-        }
     </style>
 </head>
 <body>
-
-    <!-- 新增：一键进入长图模式的悬浮按钮 -->
-    <button id="capture-btn" onclick="prepareScreenshot()">📷 准备截取长图</button>
 
     <textarea id="latex-input" placeholder="输入 LaTeX 代码（支持图文混排、原生 align 环境、\section 标题排版等）..."></textarea>
     <div class="divider" id="divider"></div>
@@ -295,19 +267,23 @@
         divider.addEventListener('mousedown', startDrag);
         document.addEventListener('mousemove', doDrag);
         document.addEventListener('mouseup', stopDrag);
-
         divider.addEventListener('touchstart', startDrag, { passive: false });
         document.addEventListener('touchmove', doDrag, { passive: false });
         document.addEventListener('touchend', stopDrag);
 
-        // ================= 新增：截图模式触发函数 =================
-        function prepareScreenshot() {
-            document.body.classList.add('capture-mode');
+        // ================= 快捷键监听：P键进入/退出长图模式 =================
+        document.addEventListener('keydown', function(e) {
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            if (activeTag === 'textarea' || activeTag === 'input') {
+                return;
+            }
             
-            setTimeout(() => {
-                alert('已进入“纯净排版模式”！\n\n代码框已隐藏，所有公式已完整展开并释放全局滚动条。\n\n此时请：\n1. 按下 Ctrl + Shift + P (Mac为 Cmd + Shift + P)\n2. 搜索 "full" 选择“截取完整网页屏幕截图”\n3. 截图完成后，直接按 F5 刷新网页即可恢复原有编辑状态。');
-            }, 100);
-        }
+            // 同时切换 html 和 body 的样式，以释放全局滚动条
+            if (e.key === 'p' || e.key === 'P') {
+                document.documentElement.classList.toggle('capture-mode');
+                document.body.classList.toggle('capture-mode');
+            }
+        });
     </script>
 </body>
 </html>
