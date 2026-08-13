@@ -14,7 +14,7 @@
 % 3. Advanced Calculus, Leibniz rule, multiple integrals
 & \frac{d}{dx}\left(\int_{a(x)}^{b(x)} f(x,t) \, dt\right) = f(x, b(x)) b'(x) - f(x, a(x)) a'(x) + \int_{a(x)}^{b(x)} \frac{\partial}{\partial x} f(x,t) \, dt \\
 & \sum_{n=1}^\infty \frac{1}{n^s} = \prod_{p \text{ prime}} \frac{1}{1 - p^{-s}} = \zeta(s) \quad \xrightarrow{\text{Euler}} \quad \sum_{n=1}^\infty \frac{1}{n^2} = \frac{\pi^2}{6} \\
-& \oint_{\partial S} \mathbf{F} \cdot d\mathbf{r} = \iint_{S} (\nabla \times \mathbf{F}) \cdot d\mathbf{S} \quad \Longleftrightarrow \quad \iiint_V (\nabla \cdot \mathbf{F}) \, dV = \oiint_{\partial V} \mathbf{F} \cdot d\mathbf{S} \\
+& \oint_{\partial S} \mathbf{F} \cdot d\mathbf{r} = \iint_{S} (\nabla \times \mathbf{F}) \cdot d\mathbf{S} \quad \Longleftrightarrow \quad \iiint_V (\nabla \cdot \mathbf{F}) \, dV = \oint_{\partial V} \mathbf{F} \cdot d\mathbf{S} \\
 & \idotsint_{\Omega} \omega = \int_{\partial \Omega} d\omega \quad \text{\small (Generalized Stokes' Theorem)} \\
 
 % 4. Matrix operations, block matrices, determinants
